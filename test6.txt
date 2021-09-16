@@ -1,0 +1,15 @@
+Set objSWbemLocator = CreateObject("WbemScripting.SWbemLocator") 
+Set objWMIService= objSWbemLocator.ConnectServer("ACCOUNTING-PC", "rootcimv2")
+ 
+Set colShares = objWMIService.ExecQuery("Select * from Win32_Share Where Type=0")
+ 
+For each objShare in colShares
+ 
+    Wscript.Echo "Name: " & objShare.Name  & vbCrLf _
+                       & "Path: " & objShare.Path & vbCrLf  _ 
+                       & "Type: " & objShare.Type  & vbCrLf _
+                       & "Allow Maximum: " & objShare.AllowMaximum & vbCrLf _
+                       & "Maximum Allowed: " & objShare.MaximumAllowed & vbCrLf _
+                       & "Caption: " & objShare.Caption   
+	Wscript.Echo "---------------------------------"
+Next
