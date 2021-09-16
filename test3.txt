@@ -20,16 +20,23 @@
 <% 
 try
 
-
-	Dim de2 As New DirectoryEntry
-
-    de2.Path = "WinNT://ACCOUNTING-PC/LanmanServer"
-    For Each d2 As DirectoryEntry In de2.Children
-			Response.write(d2.Name)
-			Response.write(" : ")
-			Response.write(d2.SchemaClassName)
-			Response.write("<br>")
-    Next
+	Dim  connOptions  as ConnectionOptions= new ConnectionOptions()
+		Dim scope as ManagementScope = new ManagementScope("\\\\"  + "ACCOUNTING-PC" + "rootCIMV2",
+                                                            connOptions)
+            scope.Connect()
+ 
+           Dim  worker as ManagementObjectSearcher = new ManagementObjectSearcher(scope,
+                                        new ObjectQuery("select Name,Path from win32_share"))
+			dim share as ManagementObject						
+            for eachshare in worker.Get()
+				
+				Response.write(share("Name"))
+				Response.write(" : ")
+				Response.write(share("Path"))
+				Response.write("<br>") 
+            
+           Next
+			
 	
 Catch ex As Exception
 	Response.write( ex.Message)
