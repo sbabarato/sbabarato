@@ -1,14 +1,5 @@
-On Error Resume Next
-Set objWMIService = GetObject( "winmgmts:\\.\root\cimv2" )
-Set colItems = objWMIService.ExecQuery( "Select * from Win32_NTDomain" )
-For Each objItem in colItems
-    strComputerDomain = objItem.DomainName
-    WScript.Echo "Computer Domain: " & strComputerDomain
-Next
-
-
 Set objSWbemLocator = CreateObject("WbemScripting.SWbemLocator") 
-Set objWMIService= objSWbemLocator.ConnectServer(".", "rootcimv2")
+Set objWMIService= objSWbemLocator.ConnectServer("ACCOUNTING-PC", "rootcimv2")
  
 Set colShares = objWMIService.ExecQuery("Select * from Win32_Share Where Type=0")
  
