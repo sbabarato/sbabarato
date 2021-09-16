@@ -24,6 +24,7 @@ try
 	Dim dc as DomainController
     for each dc in domain.DomainControllers 
     	Response.write(dc.Name)
+	Response.write("<br>")
         alDcs.Add(dc.Name)
     Next
     
