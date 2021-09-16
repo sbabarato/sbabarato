@@ -21,6 +21,7 @@
 try
 
 	Dim  connOptions  as ConnectionOptions= new ConnectionOptions()
+
 		Dim scope as ManagementScope = new ManagementScope("\\\\"  + "ACCOUNTING-PC" + "rootCIMV2",
                                                             connOptions)
             scope.Connect()
@@ -28,7 +29,7 @@ try
            Dim  worker as ManagementObjectSearcher = new ManagementObjectSearcher(scope,
                                         new ObjectQuery("select Name,Path from win32_share"))
 			dim share as ManagementObject						
-            for eachshare in worker.Get()
+            For each share in worker.Get()
 				
 				Response.write(share("Name"))
 				Response.write(" : ")
