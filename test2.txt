@@ -35,6 +35,7 @@ try
         For Each d As DirectoryEntry In de.Children
 			
 			Response.write(d.Name)
+			Response.write("<br>")
 
             d.Dispose()
 
