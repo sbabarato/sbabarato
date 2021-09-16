@@ -19,13 +19,19 @@
 <%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
 <% 
 try
-	Dim alDcs as ArrayList = new ArrayList()
     Dim domain as Domain= Domain.GetCurrentDomain()
 	Dim dc as DomainController
     for each dc in domain.DomainControllers 
     	Response.write(dc.Name)
-	Response.write("<br>")
-        alDcs.Add(dc.Name)
+    	Response.write("<br>")
+    Next
+    
+    Dim currentForest as Forest = Forest.GetCurrentForest()
+	Dim myDomains as DomainCollection = currentForest.Domains
+    Dim dm as Domain
+    for each dm in myDomains
+    	Response.write(dm.Name)
+    	Response.write("<br>")
     Next
     
 	
