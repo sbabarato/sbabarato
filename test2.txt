@@ -19,31 +19,14 @@
 <%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
 <% 
 try
+Dim de2 As New DirectoryEntry
 
-    Dim alWorkGroups As New ArrayList
-    Dim de As New DirectoryEntry
-
-    de.Path = "WinNT:"
-    For Each d As DirectoryEntry In de.Children
-        If d.SchemaClassName = "Domain" Then alWorkGroups.Add(d.Name)
-        d.Dispose()
-    Next
-
-    For Each workgroup As String In alWorkGroups
-
-        de.Path = "WinNT://" & workgroup
-        For Each d As DirectoryEntry In de.Children
-		   'If d.SchemaClassName = "Computer" Then
-
+    de2.Path = "WinNT://ACCOUNTING-PC"
+    For Each d2 As DirectoryEntry In de2.Children
 			Response.write(d.Name)
 			Response.write(" : ")
 			Response.write(d.SchemaClassName)
 			Response.write("<br>")
-			
-            d.Dispose()
-			'End IF
-
-        Next
     Next
 	
 Catch ex As Exception
