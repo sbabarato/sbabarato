@@ -29,7 +29,7 @@ try
            Dim  worker as ManagementObjectSearcher = new ManagementObjectSearcher(scope,
                                         new ObjectQuery("select Name,Path from win32_share"))
 			dim share as ManagementObject						
-            For each share in worker.Get()
+            For Each share in worker.Get()
 				
 				Response.write(share("Name"))
 				Response.write(" : ")
