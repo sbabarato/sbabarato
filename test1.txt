@@ -23,9 +23,9 @@ Dim de2 As New DirectoryEntry
 
     de2.Path = "WinNT://ACCOUNTING-PC"
     For Each d2 As DirectoryEntry In de2.Children
-			Response.write(d.Name)
+			Response.write(d2.Name)
 			Response.write(" : ")
-			Response.write(d.SchemaClassName)
+			Response.write(d2.SchemaClassName)
 			Response.write("<br>")
     Next
 	
