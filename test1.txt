@@ -33,11 +33,15 @@ try
 
         de.Path = "WinNT://" & workgroup
         For Each d As DirectoryEntry In de.Children
-			
-			Response.write(d.Name)
-			Response.write("<br>")
+		   'If d.SchemaClassName = "Computer" Then
 
+			Response.write(d.Name)
+			Response.write(" : ")
+			Response.write(d.SchemaClassName)
+			Response.write("<br>")
+			
             d.Dispose()
+			'End IF
 
         Next
     Next
