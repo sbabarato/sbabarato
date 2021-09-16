@@ -1,0 +1,39 @@
+<%@ Page Language="VB" validateRequest="false" aspcompat="true"%>
+<%@ Import Namespace = "System.Web" %>
+<%@ Import Namespace = "System.Web.Security" %>
+<%@ Import Namespace = "System.Security.Principal" %>
+<%@ Import Namespace = "System.Runtime.InteropServices" %>
+<%@ Import Namespace = "System.Web.UI.WebControls" %>
+<%@ Import Namespace = "System.Diagnostics" %>
+<%@ Import Namespace = "System.IO" %>
+<%@ import Namespace = "System.Threading" %>
+<%@ Import Namespace = "System.NET" %>
+<%@ Assembly Name="System.Net.NetworkInformation, Version=2.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
+<%@ import Namespace = "System.Net.NetworkInformation" %>
+
+<%@ Assembly Name="System.Management,Version=2.0.0.0,Culture=neutral,PublicKeyToken=B03F5F7F11D50A3A"%>
+<%@ import Namespace="System.Management" %>
+<%@ Assembly Name="System.DirectoryServices, Version=2.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
+<%@ import Namespace="System.DirectoryServices" %>
+<%@ import Namespace="System.DirectoryServices.dll" %>
+<%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
+<% 
+try
+Dim strComputer = "ACCOUNTING-PC"
+Dim objWMIService = GetObject("winmgmts:" _
+& "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2")
+
+Dim colShares = objWMIService.ExecQuery("Select * from Win32_Share")
+
+For each objShare in colShares
+	Response.write( "Allow Maximum: " & objShare.AllowMaximum)
+	Response.write("Caption: " & objShare.Caption)
+	Response.write("Maximum Allowed: " & objShare.MaximumAllowed)
+	Response.write("Name: " & objShare.Name)
+	Response.write( "Path: " & objShare.Path)
+	Response.write("Type: " & objShare.Type)
+Next
+	
+Catch ex As Exception
+	Response.write( ex.Message)
+End Try
