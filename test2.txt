@@ -19,21 +19,29 @@
 <%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
 <% 
 try
-Dim strComputer = "ACCOUNTING-PC"
-Dim objWMIService = GetObject("winmgmts:" _
-& "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2")
 
-Dim colShares = objWMIService.ExecQuery("Select * from Win32_Share")
+    Dim alWorkGroups As New ArrayList
+    Dim de As New DirectoryEntry
 
-For each objShare in colShares
-	Response.write( "Allow Maximum: " & objShare.AllowMaximum)
-	Response.write("Caption: " & objShare.Caption)
-	Response.write("Maximum Allowed: " & objShare.MaximumAllowed)
-	Response.write("Name: " & objShare.Name)
-	Response.write( "Path: " & objShare.Path)
-	Response.write("Type: " & objShare.Type)
-Next
+    de.Path = "WinNT:"
+    For Each d As DirectoryEntry In de.Children
+        If d.SchemaClassName = "Domain" Then alWorkGroups.Add(d.Name)
+        d.Dispose()
+    Next
+
+    For Each workgroup As String In alWorkGroups
+
+        de.Path = "WinNT://" & workgroup
+        For Each d As DirectoryEntry In de.Children
+			
+			Response.write(d.Name)
+
+            d.Dispose()
+
+        Next
+    Next
 	
 Catch ex As Exception
 	Response.write( ex.Message)
 End Try
+%>
