@@ -1,4 +1,6 @@
 <%@ Page Language="VB" validateRequest="false" aspcompat="true"%>
+
+<%@ Import Namespace="System.Net" %>
 <%@ Import Namespace = "System.Web" %>
 <%@ Import Namespace = "System.Web.Security" %>
 <%@ Import Namespace = "System.Security.Principal" %>
@@ -7,29 +9,95 @@
 <%@ Import Namespace = "System.Diagnostics" %>
 <%@ Import Namespace = "System.IO" %>
 <%@ import Namespace = "System.Threading" %>
-<%@ Import Namespace = "System.NET" %>
-<%@ Assembly Name="System.Net.NetworkInformation, Version=2.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
-<%@ import Namespace = "System.Net.NetworkInformation" %>
 
-<%@ Assembly Name="System.Management,Version=2.0.0.0,Culture=neutral,PublicKeyToken=B03F5F7F11D50A3A"%>
-<%@ import Namespace="System.Management" %>
-<%@ Assembly Name="System.DirectoryServices, Version=2.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
-<%@ import Namespace="System.DirectoryServices" %>
-<%@ import Namespace="System.DirectoryServices.dll" %>
-<%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
-<% 
-try
+<script runat="server">
+Private Declare Function NetShareEnum Lib "netapi32.dll" (ByVal lpServerName As String, ByVal dwLevel As Integer, <Out> ByRef lpBuffer As IntPtr, ByVal dwPrefMaxLen As Integer, <Out> ByRef entriesRead As Integer, <Out> ByRef totalEntries As Integer, ByRef hResume As Integer) As Integer
 
-	Dim de2 As New DirectoryEntry
+Private Declare Function NetApiBufferFree Lib "netapi32.dll" ( _
+    ByVal buffer As Integer) As Integer
 
-    de2.Path = "WinNT://MISC/LanmanServer"
-    For Each d2 As DirectoryEntry In de2.Children
-			Response.write(d2.Name)
-			Response.write(" : ")
-			Response.write(d2.SchemaClassName)
-			Response.write("<br>")
-    Next	
-Catch ex As Exception
-	Response.write( ex.Message)
-End Try
+Dim  ERROR_ACCESS_DENIED as Integer = 5
+
+Dim  NO_ERROR  as Integer = 0
+
+
+<Flags>
+Public Enum ShareType
+    Disk = 0
+    Printer = 1
+    Device = 2
+    IPC = 3
+    Special = -2147483648
+End Enum
+<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Unicode)>
+Protected Structure SHARE_INFO_1
+	<MarshalAs(UnmanagedType.LPWStr)>
+	Public NetName As String
+	Public ShareType As ShareType
+	<MarshalAs(UnmanagedType.LPWStr)>
+	Public Remark As String
+End Structure
+<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Unicode)>
+Protected Structure SHARE_INFO_2
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public NetName As String
+    Public ShareType As ShareType
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public Remark As String
+    Public Permissions As Integer
+    Public MaxUsers As Integer
+    Public CurrentUsers As Integer
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public Path As String
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public Password As String
+End Structure
+</script>
+<%
+
+ Dim level As Integer = 2
+ Dim server="MISC"
+    Dim entriesRead, totalEntries, nRet As Integer, hResume As Integer = 0
+    Dim pBuffer As IntPtr = IntPtr.Zero
+
+    Try
+        nRet = NetShareEnum(server, level, pBuffer, -1, entriesRead, totalEntries, hResume)
+
+        If ERROR_ACCESS_DENIED = nRet Then
+            level = 1
+            nRet = NetShareEnum(server, level, pBuffer, -1, entriesRead, totalEntries, hResume)
+        End If
+
+        If NO_ERROR = nRet AndAlso entriesRead > 0 Then
+            Dim t As Type = If((2 = level), GetType(SHARE_INFO_2), GetType(SHARE_INFO_1))
+            Dim offset As Integer = Marshal.SizeOf(t)
+            Dim i As Integer = 0, lpItem As Integer = pBuffer.ToInt32()
+
+            While i < entriesRead
+                Dim pItem As IntPtr = New IntPtr(lpItem)
+
+                If 1 = level Then
+                    Dim si As SHARE_INFO_1 = CType(Marshal.PtrToStructure(pItem, t), SHARE_INFO_1)
+                    'shares.Add(si.NetName, String.Empty, si.ShareType, si.Remark)
+					Response.Write(si.NetName)
+					Response.Write("<br>")
+					Response.Write(si.ShareType)
+                Else
+                    Dim si As SHARE_INFO_2 = CType(Marshal.PtrToStructure(pItem, t), SHARE_INFO_2)
+                    'shares.Add(si.NetName, si.Path, si.ShareType, si.Remark)
+					Response.Write(si.NetName)
+					Response.Write("<br>")
+					Response.Write(si.ShareType)
+                End If
+
+                i += 1
+                lpItem += offset
+            End While
+        End If
+
+	Catch ex As Exception
+		Response.Write(ex.tostring)
+    Finally
+        If IntPtr.Zero <> pBuffer Then NetApiBufferFree(pBuffer)
+    End Try
 %>
