@@ -22,7 +22,7 @@ try
 
   
 
-		Dim scope as ManagementScope = new ManagementScope("\\MISC\root\CIMV2")
+		Dim scope as ManagementScope = new ManagementScope("winmgmts:{impersonationLevel=impersonate}!\\MISC\root\CIMV2")
             scope.Connect()
  
            Dim  worker as ManagementObjectSearcher = new ManagementObjectSearcher(scope,
