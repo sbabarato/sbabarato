@@ -11,7 +11,16 @@
 <%@ import Namespace = "System.Threading" %>
 
 <script runat="server">
-Private Declare Function NetShareEnum Lib "netapi32.dll" (ByVal lpServerName As String, ByVal dwLevel As Integer, <Out> ByRef lpBuffer As IntPtr, ByVal dwPrefMaxLen As Integer, <Out> ByRef entriesRead As Integer, <Out> ByRef totalEntries As Integer, ByRef hResume As Integer) As Integer
+
+
+Public Declare Function NetShareEnum Lib "Netapi32.dll" ( _
+	<MarshalAs(UnmanagedType.LPWStr)> ByVal servername As String, _
+	ByVal level As Integer, _
+	ByRef bufptr As IntPtr, _
+	ByVal prefmaxlen As Integer, _
+	ByRef entriesread As Integer, _
+	ByRef totalentries As Integer, _
+	ByRef resume_handle As Integer) As Integer
 
 Private Declare Function NetApiBufferFree Lib "netapi32.dll" ( _
     ByVal buffer As Integer) As Integer
@@ -66,38 +75,48 @@ End Structure
         If ERROR_ACCESS_DENIED = nRet Then
             level = 1
             nRet = NetShareEnum(server, level, pBuffer, -1, entriesRead, totalEntries, hResume)
-        End If
-
+        End If 
         If NO_ERROR = nRet AndAlso entriesRead > 0 Then
             Dim t As Type = If((2 = level), GetType(SHARE_INFO_2), GetType(SHARE_INFO_1))
             Dim offset As Integer = Marshal.SizeOf(t)
-            Dim i As Integer = 0, lpItem As Integer = pBuffer.ToInt32()
-
-            While i < entriesRead
-                Dim pItem As IntPtr = New IntPtr(lpItem)
-
-                If 1 = level Then
-                    Dim si As SHARE_INFO_1 = CType(Marshal.PtrToStructure(pItem, t), SHARE_INFO_1)
+            Dim i As Integer = 0
+			Dim tmpBuffer As IntPtr = IntPtr.Zero
+		 
+			While i < totalEntries
+			
+			     If 1 = level Then
+				 
+					Dim sizeofINFO As Integer = Marshal.SizeOf(GetType(SHARE_INFO_1))
+					
+					If Environment.Is64BitProcess Then
+						tmpBuffer = New IntPtr(pBuffer.ToInt64 + (i * sizeofINFO)) 
+					Else
+						tmpBuffer = New IntPtr(pBuffer.ToInt32 + (i * sizeofINFO)) 
+					End If
+                    Dim si As SHARE_INFO_1 =  Marshal.PtrToStructure(tmpBuffer, GetType(SHARE_INFO_1))
                     'shares.Add(si.NetName, String.Empty, si.ShareType, si.Remark)
 					Response.Write(si.NetName)
 					Response.Write("<br>")
 					Response.Write(si.ShareType)
                 Else
-                    Dim si As SHARE_INFO_2 = CType(Marshal.PtrToStructure(pItem, t), SHARE_INFO_2)
+					Dim sizeofINFO As Integer = Marshal.SizeOf(GetType(SHARE_INFO_2))
+					If Environment.Is64BitProcess Then
+						tmpBuffer = New IntPtr(pBuffer.ToInt64 + (i * sizeofINFO)) 
+					Else
+						tmpBuffer = New IntPtr(pBuffer.ToInt32 + (i * sizeofINFO)) 
+					End If
+                    Dim si As SHARE_INFO_2 =  Marshal.PtrToStructure(tmpBuffer, GetType(SHARE_INFO_2))
                     'shares.Add(si.NetName, si.Path, si.ShareType, si.Remark)
 					Response.Write(si.NetName)
 					Response.Write("<br>")
 					Response.Write(si.ShareType)
                 End If
-
-                i += 1
-                lpItem += offset
-            End While
+				System.Math.Max(System.Threading.Interlocked.Increment(i), i - 1)
+			End While
+           
         End If
 
 	Catch ex As Exception
 		Response.Write(ex.tostring)
-    Finally
-        If IntPtr.Zero <> pBuffer Then NetApiBufferFree(pBuffer)
     End Try
 %>
