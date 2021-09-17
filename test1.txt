@@ -22,7 +22,7 @@ try
 
 	Dim  connOptions  as ConnectionOptions= new ConnectionOptions()
 
-		Dim scope as ManagementScope = new ManagementScope("\\\\"  + "ACCOUNTING-PC" + "rootCIMV2",
+		Dim scope as ManagementScope = new ManagementScope("\"  + "ACCOUNTING-PC" + "rootCIMV2",
                                                             connOptions)
             scope.Connect()
  
