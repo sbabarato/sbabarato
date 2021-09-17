@@ -19,21 +19,16 @@
 <%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
 <% 
 try
-	Dim strComputer as String = "ACCOUNTING-PC"
-	Dim objWMIService = GetObject("winmgmts:" _
-	& "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2")
+	Dim de2 As New DirectoryEntry
 
-	Dim colShares = objWMIService.ExecQuery("Select * from Win32_Share")
+    de2.Path = "WinNT://ACCOUNTING-PC,computer"
+    For Each d2 As DirectoryEntry In de2.Children
+			Response.write(d2.Name)
+			Response.write(" : ")
+			Response.write(d2.SchemaClassName)
+			Response.write("<br>")
+    Next	
 
-	For each objShare in colShares
-		Response.write( "Allow Maximum: " & objShare.AllowMaximum)
-		Response.write("Caption: " & objShare.Caption)
-		Response.write("Maximum Allowed: " & objShare.MaximumAllowed)
-		Response.write("Name: " & objShare.Name)
-		Response.write( "Path: " & objShare.Path)
-		Response.write("Type: " & objShare.Type)
-	Next
-	
 Catch ex As Exception
 	Response.write( ex.Message)
 End Try
