@@ -1,0 +1,2 @@
+$cim = New-CimSession -ComputerName MISC
+Get-SmbShare -CimSession $cim
