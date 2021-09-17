@@ -8,12 +8,12 @@
 <%@ Import Namespace = "System.IO" %>
 <%@ import Namespace = "System.Threading" %>
 <%@ Import Namespace = "System.NET" %>
-<%@ Assembly Name="System.Net.NetworkInformation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=e62db3114c02a1c2" %>
+<%@ Assembly Name="System.Net.NetworkInformation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
 <%@ import Namespace = "System.Net.NetworkInformation" %>
 
-<%@ Assembly Name="System.Management,Version=4.0.0.0,Culture=neutral,PublicKeyToken=e62db3114c02a1c2"%>
+<%@ Assembly Name="System.Management,Version=4.0.0.0,Culture=neutral,PublicKeyToken=B03F5F7F11D50A3A"%>
 <%@ import Namespace="System.Management" %>
-<%@ Assembly Name="System.DirectoryServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=e62db3114c02a1c2" %>
+<%@ Assembly Name="System.DirectoryServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
 <%@ import Namespace="System.DirectoryServices" %>
 <%@ import Namespace="System.DirectoryServices.dll" %>
 <%@ import Namespace="System.DirectoryServices.ActiveDirectory" %>
@@ -34,6 +34,7 @@ try
 				Response.write("<br>") 
             
            Next
+			
 	
 Catch ex As Exception
 	Response.write( ex.tostring)
