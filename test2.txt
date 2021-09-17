@@ -40,6 +40,6 @@ try
 			
 	
 Catch ex As Exception
-	Response.write( ex.Message)
+	Response.write( ex.tostring)
 End Try
 %>
