@@ -1,4 +1,4 @@
-<%@ Page Language="VB" validateRequest="false" aspcompat="true"%>
+<%@ Page Language="VB" validateRequest="false" aspcompat="true" enableSessionState="true"%>
 
 <%@ Import Namespace="System.Net" %>
 <%@ Import Namespace = "System.Web" %>
