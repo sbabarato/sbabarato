@@ -3,5 +3,4 @@
         <customErrors mode="Off"/>
         <pages enableSessionState="true" /> 
  </system.web>
-    </system.web>
 </configuration>
