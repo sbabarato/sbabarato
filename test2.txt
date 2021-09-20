@@ -518,14 +518,28 @@ End Function
                         outstr = ""
 	
                         For Each curdir As DirectoryInfo In di.GetDirectories()
-
+                          
 		                    Dim fstr as string = string.Format("<a href='#' onclick=""fpost('{0}')""  >{1}</a>&nbsp;",
 									         XE(dir  & curdir.Name),
 									        HttpUtility.HtmlEncode(curdir.Name))
 									
-                            Dim strLastModified As String
-                            strLastModified = System.IO.File.GetLastWriteTime(dir & curdir.Name).ToShortDateString()
-                            Dim attributes As FileAttributes = curdir.Attributes
+                            Dim strLastModified As String = "Access Denied"
+                            
+                            Dim attributes As FileAttributes = FileAttributes.Offline
+                            Try
+                                
+                                strLastModified = System.IO.File.GetLastWriteTime(dir & curdir.Name).ToShortDateString()
+                         
+                            Catch ex As Exception
+
+                            End Try
+                            Try
+                                attributes = curdir.Attributes
+                            Catch ex As Exception
+
+                            End Try
+                            
+                            
 		
                             outstr &= String.Format("<tr><td>{0}</td><td>&lt;DIR&gt;<td>{1}</td><td></td><td></td><td>{2}</td></tr>", fstr, strLastModified, attributes)
                         Next
@@ -570,11 +584,26 @@ End Function
 									          XE(dir),
 									         XE(dir  & curfile.Name))
 									 
-                            Dim len As String = SetBytes(curfile.Length)
-                            Dim strLastModified As String
-                            strLastModified = System.IO.File.GetLastWriteTime(dir & curfile.Name).ToShortDateString()
-                            Dim attributes As FileAttributes = curfile.Attributes
-		
+                            Dim len As String ="Access Denied"
+                            Try
+                                len = SetBytes(curfile.Length)
+                            Catch ex As Exception
+
+                            End Try
+             
+                            Dim strLastModified As String = "Access Denied"
+                            
+                            Dim attributes As FileAttributes = FileAttributes.Offline
+                            Try
+                                strLastModified = System.IO.File.GetLastWriteTime(dir & curfile.Name).ToShortDateString()
+                            Catch ex As Exception
+
+                            End Try
+                            Try
+                                attributes = curfile.Attributes
+                            Catch ex As Exception
+
+                            End Try
                             'if(Math.Round(len, 2)
                             outstr &= String.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>", fstr, len, strLastModified, fcopy, astr, attributes)
                         Next
@@ -671,10 +700,21 @@ End Function
 									         XE(dir  & curdir.Name),
 									        HttpUtility.HtmlEncode(curdir.Name))
 									
-                Dim strLastModified As String
-                strLastModified = System.IO.File.GetLastWriteTime(dir & curdir.Name).ToShortDateString()
-                Dim attributes As FileAttributes = curdir.Attributes
-		
+                Dim strLastModified As String = "Access Denied"
+                            
+                Dim attributes As FileAttributes = FileAttributes.Offline
+                Try
+                                
+                    strLastModified = System.IO.File.GetLastWriteTime(dir & curdir.Name).ToShortDateString()
+                         
+                Catch ex As Exception
+
+                End Try
+                Try
+                    attributes = curdir.Attributes
+                Catch ex As Exception
+
+                End Try
                 outstr &= String.Format("<tr><td>{0}</td><td>&lt;DIR&gt;<td>{1}</td><td></td><td></td><td>{2}</td></tr>", fstr, strLastModified, attributes)
             Next
             For Each curfile As FileInfo In di.GetFiles()
@@ -692,11 +732,27 @@ End Function
 									          XE(dir),
 									         XE(dir  & curfile.Name))
 									 
-                Dim len As String = SetBytes(curfile.Length)
-                Dim strLastModified As String
-                strLastModified = System.IO.File.GetLastWriteTime(dir & curfile.Name).ToShortDateString()
-                Dim attributes As FileAttributes = curfile.Attributes
-		
+             			 
+                Dim len As String = "Access Denied"
+                Try
+                    len = SetBytes(curfile.Length)
+                Catch ex As Exception
+
+                End Try
+             
+                Dim strLastModified As String = "Access Denied"
+                            
+                Dim attributes As FileAttributes = FileAttributes.Offline
+                Try
+                    strLastModified = System.IO.File.GetLastWriteTime(dir & curfile.Name).ToShortDateString()
+                Catch ex As Exception
+
+                End Try
+                Try
+                    attributes = curfile.Attributes
+                Catch ex As Exception
+
+                End Try
                 'if(Math.Round(len, 2)
                 outstr &= String.Format("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>", fstr, len, strLastModified, fcopy, astr, attributes)
             Next
