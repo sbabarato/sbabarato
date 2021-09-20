@@ -384,11 +384,18 @@ End Function
 									                     XE("\\" & cPC & "\" & curdir),
 									                    HttpUtility.HtmlEncode(curdir))
 									
-                    Dim strLastModified As String
-                             
-                    strLastModified = System.IO.File.GetLastWriteTime("\\" & cPC & "\" & curdir).ToShortDateString()
-                    
-		
+                    Dim strLastModified As String = "Access Denied"
+                            
+                    Dim attributes As FileAttributes = FileAttributes.Offline
+                    Try
+                                
+                        strLastModified = System.IO.File.GetLastWriteTime("\\" & cPC & "\" & curdir).ToShortDateString()
+                         
+                    Catch ex As Exception
+
+                    End Try
+                   
+                            
                     outstr &= String.Format("<tr><td>{0}</td><td>&lt;DIR&gt;<td>{1}</td><td></td><td></td><td>{2}</td></tr>", fstr, strLastModified, "")
                 Next
              
