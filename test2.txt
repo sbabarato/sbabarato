@@ -322,13 +322,13 @@ End Structure
                 de.Path = "WinNT://" & workgroup
                 outstr &= "Domain=> " & workgroup & ": <br>"
                 For Each d As DirectoryEntry In de.Children
-                    'If d.SchemaClassName = "Computer" Then
-                 outstr &= string.Format("<a href='#' onclick=""PCpost('{0}')""  >{1}\</a><br>",
-            XE(d.Name),
-            d.Name)
+                    If d.SchemaClassName = "Computer" Then
+                        outstr &= string.Format("<a href='#' onclick=""PCpost('{0}')""  >{1}\</a><br>",
+                        XE(d.Name),
+                        d.Name)
                  
-                    d.Dispose()
-                    'End IF
+                        d.Dispose()
+                    End If
 
                 Next
             Next
